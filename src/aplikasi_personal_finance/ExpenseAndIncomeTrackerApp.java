@@ -61,7 +61,7 @@ public class ExpenseAndIncomeTrackerApp {
         frame.add(titleBar, BorderLayout.NORTH);
         
         // Create and set up the title label
-        titleLabel = new JLabel("Expense And Income Tracker");
+        titleLabel = new JLabel("Personal Finance Tracker");
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 17));
         titleLabel.setBounds(10,0,250,30);
@@ -184,31 +184,52 @@ public class ExpenseAndIncomeTrackerApp {
         
         
         // Create and set up buttons panel
-        addTransactionButton = new JButton("Add Transaction");
-        addTransactionButton.setBackground(new Color(41,128,185));
-        addTransactionButton.setForeground(Color.WHITE);
-        addTransactionButton.setFocusPainted(false);
-        addTransactionButton.setBorderPainted(false);
-        addTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
-        addTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        addTransactionButton.addActionListener((e) -> { showAddTransactionDialog(); });
+ // Tombol "Add Transaction"
+addTransactionButton = new JButton("Add Transaction");
+addTransactionButton.setBackground(new Color(41, 128, 185));
+addTransactionButton.setForeground(Color.WHITE);
+addTransactionButton.setFocusPainted(false);
+addTransactionButton.setBorderPainted(false);
+addTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
+addTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+addTransactionButton.addActionListener((e) -> {
+    showAddTransactionDialog();
+});
 
-        removeTransactionButton = new JButton("Remove Transaction");
-        removeTransactionButton.setBackground(new Color(231,76,60));
-        removeTransactionButton.setForeground(Color.WHITE);
-        removeTransactionButton.setFocusPainted(false);
-        removeTransactionButton.setBorderPainted(false);
-        removeTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
-        removeTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        removeTransactionButton.addActionListener((e) -> {
-            removeSelectedTransaction();
-        });
-        
-        buttonsPanel = new JPanel();
-        buttonsPanel.setLayout(new BorderLayout(10, 5));
-        buttonsPanel.add(addTransactionButton, BorderLayout.NORTH);
-        buttonsPanel.add(removeTransactionButton, BorderLayout.SOUTH);
-        dashboardPanel.add(buttonsPanel);
+// Tombol "Remove Transaction"
+removeTransactionButton = new JButton("Remove Transaction");
+removeTransactionButton.setBackground(new Color(231, 76, 60));
+removeTransactionButton.setForeground(Color.WHITE);
+removeTransactionButton.setFocusPainted(false);
+removeTransactionButton.setBorderPainted(false);
+removeTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
+removeTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+removeTransactionButton.addActionListener((e) -> {
+    removeSelectedTransaction();
+});
+
+// Tombol "Edit Transaction"
+JButton editTransactionButton = new JButton("Edit Transaction");
+editTransactionButton.setBackground(new Color(243, 156, 18)); // Warna berbeda untuk membedakan
+editTransactionButton.setForeground(Color.WHITE);
+editTransactionButton.setFocusPainted(false);
+editTransactionButton.setBorderPainted(false);
+editTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
+editTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+editTransactionButton.addActionListener((e) -> {
+    showEditTransactionDialog(); // Tambahkan metode ini
+});
+
+// Panel untuk tombol
+buttonsPanel = new JPanel();
+buttonsPanel.setLayout(new GridLayout(3, 1, 10, 10)); // Tata letak grid dengan 3 baris
+buttonsPanel.add(addTransactionButton);
+buttonsPanel.add(editTransactionButton);
+buttonsPanel.add(removeTransactionButton);
+
+// Tambahkan panel tombol ke dashboard
+dashboardPanel.add(buttonsPanel);
+
         
         // Set up the transaction table
         String[] columnNames = {"ID","Type","Description","Amount"};
@@ -443,6 +464,131 @@ public class ExpenseAndIncomeTrackerApp {
         
         
     }
+
+    private void updateTransaction(int transactionId, JComboBox<String> typeCombobox, JTextField descriptionField, JTextField amountField, int selectedRow, String oldType, double oldAmount) {
+        try {
+            String newType = (String) typeCombobox.getSelectedItem();
+            String newDescription = descriptionField.getText();
+            double newAmount = Double.parseDouble(amountField.getText().replace("Rp", "").replace(" ", "").replace(",", ""));
+            
+            // Update totalAmount based on the difference in transaction amounts
+            if (oldType.equals("Income")) {
+                totalAmount -= oldAmount;
+            } else {
+                totalAmount += oldAmount;
+            }
+    
+            if (newType.equals("Income")) {
+                totalAmount += newAmount;
+            } else {
+                totalAmount -= newAmount;
+            }
+    
+            JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
+            totalPanel.repaint();
+    
+            // Update the data panel amounts
+            int oldIndex = oldType.equals("Income") ? 1 : 0;
+            int newIndex = newType.equals("Income") ? 1 : 0;
+    
+            if (oldIndex != newIndex) {
+                // Deduct from old type panel
+                double oldPanelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("Rp", "").replace(" ", "").replace(",", ""));
+                dataPanelValues.set(oldIndex, String.format("Rp%,.2f", oldPanelAmount - oldAmount));
+                ((JPanel) dashboardPanel.getComponent(oldIndex)).repaint();
+    
+                // Add to new type panel
+                double newPanelAmount = Double.parseDouble(dataPanelValues.get(newIndex).replace("Rp", "").replace(" ", "").replace(",", ""));
+                dataPanelValues.set(newIndex, String.format("Rp%,.2f", newPanelAmount + newAmount));
+                ((JPanel) dashboardPanel.getComponent(newIndex)).repaint();
+            } else {
+                // Update the same panel
+                double panelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("Rp", "").replace(" ", "").replace(",", ""));
+                dataPanelValues.set(oldIndex, String.format("Rp%,.2f", panelAmount - oldAmount + newAmount));
+                ((JPanel) dashboardPanel.getComponent(oldIndex)).repaint();
+            }
+    
+            // Update the database
+            Connection connection = DatabaseConnection.getConnection();
+            String updateQuery = "UPDATE `transaction_table` SET `transaction_type` = ?, `description` = ?, `amount` = ? WHERE `id` = ?";
+            PreparedStatement ps = connection.prepareStatement(updateQuery);
+            ps.setString(1, newType);
+            ps.setString(2, newDescription);
+            ps.setDouble(3, newAmount);
+            ps.setInt(4, transactionId);
+            ps.executeUpdate();
+    
+            // Update the table model
+            tableModel.setValueAt(newType, selectedRow, 1);
+            tableModel.setValueAt(newDescription, selectedRow, 2);
+            tableModel.setValueAt(String.format("Rp%,.2f", newAmount), selectedRow, 3);
+    
+            System.out.println("Transaction updated successfully.");
+        } catch (SQLException | NumberFormatException ex) {
+            Logger.getLogger(ExpenseAndIncomeTrackerApp.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+
+    private void showEditTransactionDialog() {
+        int selectedRow = transactionTable.getSelectedRow();
+        
+        // Check if a row is selected
+        if (selectedRow != -1) {
+            // Retrieve the existing data for the selected transaction
+            int transactionId = (int) transactionTable.getValueAt(selectedRow, 0);
+            String currentType = transactionTable.getValueAt(selectedRow, 1).toString();
+            String currentDescription = transactionTable.getValueAt(selectedRow, 2).toString();
+            String currentAmountStr = transactionTable.getValueAt(selectedRow, 3).toString();
+            double currentAmount = Double.parseDouble(currentAmountStr.replace("Rp", "").replace(" ", "").replace(",", ""));
+    
+            // Create a new JDialog for editing the transaction
+            JDialog dialog = new JDialog(frame, "Edit Transaction", true);
+            dialog.setSize(400, 300);
+            dialog.setLocationRelativeTo(frame);
+    
+            // Create and configure dialog panel
+            JPanel dialogPanel = new JPanel(new GridLayout(4, 0, 10, 10));
+            dialogPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+            dialogPanel.setBackground(Color.LIGHT_GRAY);
+    
+            JLabel typeLabel = new JLabel("Type:");
+            JComboBox<String> typeCombobox = new JComboBox<>(new String[]{"Expense", "Income"});
+            typeCombobox.setSelectedItem(currentType);
+    
+            JLabel descriptionLabel = new JLabel("Description:");
+            JTextField descriptionField = new JTextField(currentDescription);
+    
+            JLabel amountLabel = new JLabel("Amount:");
+            JTextField amountField = new JTextField(String.format("Rp%,.2f", currentAmount));
+    
+            JButton updateButton = new JButton("Update");
+            updateButton.setBackground(new Color(39, 174, 96));
+            updateButton.setForeground(Color.WHITE);
+            updateButton.setFocusPainted(false);
+            updateButton.setBorderPainted(false);
+            updateButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            updateButton.addActionListener(e -> {
+                updateTransaction(transactionId, typeCombobox, descriptionField, amountField, selectedRow, currentType, currentAmount);
+                dialog.dispose();
+            });
+    
+            dialogPanel.add(typeLabel);
+            dialogPanel.add(typeCombobox);
+            dialogPanel.add(descriptionLabel);
+            dialogPanel.add(descriptionField);
+            dialogPanel.add(amountLabel);
+            dialogPanel.add(amountField);
+            dialogPanel.add(new JLabel()); // Spacer
+            dialogPanel.add(updateButton);
+    
+            dialog.add(dialogPanel);
+            dialog.setVisible(true);
+        } else {
+            JOptionPane.showMessageDialog(frame, "Please select a transaction to edit.", "No Selection", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+    
     
     
     // Populate Table Transactions
