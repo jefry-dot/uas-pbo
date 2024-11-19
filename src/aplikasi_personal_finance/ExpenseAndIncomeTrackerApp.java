@@ -6,6 +6,7 @@ import javax.swing.plaf.basic.BasicScrollBarUI;
 
 import java.util.ArrayList;
 import java.awt.event.*;
+import java.util.List;
 
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -234,6 +235,21 @@ refreshButton.addActionListener((e) -> {
     refreshData();
 });
 
+
+
+JComboBox<String> filterComboBox = new JComboBox<>(new String[]{"ALL", "EXPENSE", "INCOME"});
+filterComboBox.setBackground(Color.WHITE);
+filterComboBox.setForeground(Color.BLACK);
+filterComboBox.setFont(new Font("Arial", Font.PLAIN, 14));
+filterComboBox.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+// Tambahkan ActionListener untuk memproses perubahan filter
+filterComboBox.addActionListener((e) -> {
+    String selectedFilter = (String) filterComboBox.getSelectedItem();
+    filterTableData(selectedFilter);
+});
+
+
 // Panel untuk tombol
 buttonsPanel = new JPanel();
 buttonsPanel.setLayout(new GridLayout(3, 1, 10, 10)); // Tata letak grid dengan 3 baris
@@ -241,6 +257,7 @@ buttonsPanel.add(addTransactionButton);
 buttonsPanel.add(editTransactionButton);
 buttonsPanel.add(removeTransactionButton);
 buttonsPanel.add(refreshButton);
+buttonsPanel.add(filterComboBox);
 
 // Tambahkan panel tombol ke dashboard
 dashboardPanel.add(buttonsPanel);
@@ -635,6 +652,10 @@ dashboardPanel.add(buttonsPanel);
 
 
 
+  
+    
+
+
     
     // Populate Table Transactions
     private void populateTableTransactions(){
@@ -646,6 +667,29 @@ dashboardPanel.add(buttonsPanel);
             
         }
         
+    }
+
+
+
+    private void filterTableData(String filter) {
+        // Kosongkan tabel sebelum menambahkan data yang difilter
+        tableModel.setRowCount(0);
+    
+        // Ambil semua transaksi dari DAO
+        List<Transaction> allTransactions = TransactionDAO.getAllTransaction();
+    
+        for (Transaction transaction : allTransactions) {
+            // Tambahkan transaksi ke tabel berdasarkan filter
+            if (filter.equals("ALL") || transaction.getType().equalsIgnoreCase(filter)) {
+                Object[] rowData = {
+                    transaction.getId(),
+                    transaction.getType(),
+                    transaction.getDescription(),
+                    String.format("Rp%,.2f", transaction.getAmount())
+                };
+                tableModel.addRow(rowData);
+            }
+        }
     }
     
     
