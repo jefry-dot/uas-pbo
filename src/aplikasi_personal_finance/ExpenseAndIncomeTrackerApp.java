@@ -220,12 +220,27 @@ editTransactionButton.addActionListener((e) -> {
     showEditTransactionDialog(); // Tambahkan metode ini
 });
 
+
+JButton refreshButton = new JButton("Refresh");
+refreshButton.setBackground(new Color(60, 179, 113)); // Warna biru untuk tombol refresh
+refreshButton.setForeground(Color.WHITE);
+refreshButton.setFocusPainted(false);
+refreshButton.setBorderPainted(false);
+refreshButton.setFont(new Font("Arial", Font.BOLD, 14));
+refreshButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+// Tambahkan ActionListener ke tombol Refresh
+refreshButton.addActionListener((e) -> {
+    refreshData();
+});
+
 // Panel untuk tombol
 buttonsPanel = new JPanel();
 buttonsPanel.setLayout(new GridLayout(3, 1, 10, 10)); // Tata letak grid dengan 3 baris
 buttonsPanel.add(addTransactionButton);
 buttonsPanel.add(editTransactionButton);
 buttonsPanel.add(removeTransactionButton);
+buttonsPanel.add(refreshButton);
 
 // Tambahkan panel tombol ke dashboard
 dashboardPanel.add(buttonsPanel);
@@ -589,6 +604,37 @@ dashboardPanel.add(buttonsPanel);
     }
     
     
+
+    private void refreshData() {
+        try {
+            // Kosongkan tabel transaksi
+            tableModel.setRowCount(0);
+    
+            // Muat ulang data dari database dan perbarui tabel
+            populateTableTransactions();
+    
+            // Hitung ulang total, income, dan expense
+            totalAmount = TransactionValuesCalculation.getTotalValue(TransactionDAO.getAllTransaction());
+            dataPanelValues.set(0, String.format("-Rp%,.2f", TransactionValuesCalculation.getTotalExpenses(TransactionDAO.getAllTransaction())));
+            dataPanelValues.set(1, String.format("Rp%,.2f", TransactionValuesCalculation.getTotalIncomes(TransactionDAO.getAllTransaction())));
+            dataPanelValues.set(2, "Rp" + totalAmount);
+    
+            // Perbarui tampilan data panel
+            for (int i = 0; i < 3; i++) {
+                JPanel dataPanel = (JPanel) dashboardPanel.getComponent(i);
+                dataPanel.repaint();
+            }
+    
+            System.out.println("Data successfully refreshed!");
+        } catch (Exception ex) {
+            Logger.getLogger(ExpenseAndIncomeTrackerApp.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(frame, "Failed to refresh data.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+
+
+
     
     // Populate Table Transactions
     private void populateTableTransactions(){
