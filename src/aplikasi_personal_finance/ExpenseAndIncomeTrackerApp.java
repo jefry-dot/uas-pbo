@@ -257,11 +257,10 @@ dashboardPanel.add(buttonsPanel);
     // fix the negative value
     private String fixNegativeValueDisplay(double value){
         
-        // Check if the input starts with "$-" (indicating negative)
+   
         String newVal = String.format("Rp%.2f", value);
         
         if(newVal.startsWith("Rp-")){
-            // Extract the numeric part after "$-"
             String numericPart = newVal.substring(2);
             // Format the result as "-$XXX"
             newVal = "-Rp"+numericPart;
