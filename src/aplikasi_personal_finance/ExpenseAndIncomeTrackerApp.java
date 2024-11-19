@@ -172,9 +172,9 @@ public class ExpenseAndIncomeTrackerApp {
         
         // Calculate total amount and populate data panel values
         totalAmount = TransactionValuesCalculation.getTotalValue(TransactionDAO.getAllTransaction());
-        dataPanelValues.add(String.format("-Rp%,.2f", TransactionValuesCalculation.getTotalExpenses(TransactionDAO.getAllTransaction())));
-        dataPanelValues.add(String.format("Rp%,.2f", TransactionValuesCalculation.getTotalIncomes(TransactionDAO.getAllTransaction())));
-        dataPanelValues.add("Rp"+totalAmount);
+        dataPanelValues.add(String.format("-%,.2f", TransactionValuesCalculation.getTotalExpenses(TransactionDAO.getAllTransaction())));
+        dataPanelValues.add(String.format("%,.2f", TransactionValuesCalculation.getTotalIncomes(TransactionDAO.getAllTransaction())));
+        dataPanelValues.add(""+totalAmount);
 
         
         // Add data panels for Expense, Income, and Total
@@ -290,12 +290,12 @@ dashboardPanel.add(buttonsPanel);
     private String fixNegativeValueDisplay(double value){
         
    
-        String newVal = String.format("Rp%.2f", value);
+        String newVal = String.format("%.2f", value);
         
-        if(newVal.startsWith("Rp-")){
+        if(newVal.startsWith("-")){
             String numericPart = newVal.substring(2);
             // Format the result as "-$XXX"
-            newVal = "-Rp"+numericPart;
+            newVal = "-"+numericPart;
         }
         
         return newVal;
@@ -313,7 +313,7 @@ dashboardPanel.add(buttonsPanel);
             int transactionId = (int) transactionTable.getValueAt(selectedRow, 0);
             String type = transactionTable.getValueAt(selectedRow, 1).toString();
             String amountStr = transactionTable.getValueAt(selectedRow, 3).toString();
-            double amount = Double.parseDouble(amountStr.replace("Rp", "").replace(" ", "").replace(",", ""));
+            double amount = Double.parseDouble(amountStr.replace("", "").replace(" ", "").replace(",", ""));
             
             // Update totalAmount based on the type of transaction
             if(type.equals("Income")){ totalAmount -= amount; }
@@ -328,11 +328,11 @@ dashboardPanel.add(buttonsPanel);
             
             // Update the data panel value and repaint it
             String currentValue = dataPanelValues.get(indexToUpdate);
-            double currentAmount = Double.parseDouble(currentValue.replace("Rp", "").replace(" ", "").replace(",", "").replace("--", "-"));
+            double currentAmount = Double.parseDouble(currentValue.replace("", "").replace(" ", "").replace(",", "").replace("--", "-"));
             double updatedAmount = currentAmount + (type.equals("Income") ? -amount : amount);
             //dataPanelValues.set(indexToUpdate, String.format("$%,.2f",updatedAmount));
             if(indexToUpdate == 1){ // income
-                dataPanelValues.set(indexToUpdate, String.format("Rp%,.2f", updatedAmount));
+                dataPanelValues.set(indexToUpdate, String.format("%,.2f", updatedAmount));
             }
             // expense
             else{ dataPanelValues.set(indexToUpdate, fixNegativeValueDisplay(updatedAmount)); }
@@ -437,7 +437,7 @@ dashboardPanel.add(buttonsPanel);
             String amount = amountField.getText();
 
             // Parse the amount string to a double value
-            double newAmount = Double.parseDouble(amount.replace("Rp", "").replace(" ", "").replace(",", ""));
+            double newAmount = Double.parseDouble(amount.replace("", "").replace(" ", "").replace(",", ""));
             
             // Update the total amount based on the transaction type (Income or Expense)
             // Income
@@ -456,14 +456,14 @@ dashboardPanel.add(buttonsPanel);
             String currentValue = dataPanelValues.get(indexToUpdate);
             
             // Parse the current amount string to a double value
-            double currentAmount = Double.parseDouble(currentValue.replace("Rp", "").replace(" ", "").replace(",", ""));
+            double currentAmount = Double.parseDouble(currentValue.replace("", "").replace(" ", "").replace(",", ""));
             
             // Calculate the updated amount based on the transaction type
             double updatedAmount = currentAmount + (type.equals("Income") ? newAmount : -newAmount);
             
             // Update the data panel with the new amount
             if(indexToUpdate == 1){ // income
-                dataPanelValues.set(indexToUpdate, String.format("Rp%,.2f", updatedAmount));
+                dataPanelValues.set(indexToUpdate, String.format("%,.2f", updatedAmount));
             }
             // expense
             else{ dataPanelValues.set(indexToUpdate, fixNegativeValueDisplay(updatedAmount)); }
@@ -500,7 +500,7 @@ dashboardPanel.add(buttonsPanel);
         try {
             String newType = (String) typeCombobox.getSelectedItem();
             String newDescription = descriptionField.getText();
-            double newAmount = Double.parseDouble(amountField.getText().replace("Rp", "").replace(" ", "").replace(",", ""));
+            double newAmount = Double.parseDouble(amountField.getText().replace("", "").replace(" ", "").replace(",", ""));
             
             // Update totalAmount based on the difference in transaction amounts
             if (oldType.equals("Income")) {
@@ -524,18 +524,18 @@ dashboardPanel.add(buttonsPanel);
     
             if (oldIndex != newIndex) {
                 // Deduct from old type panel
-                double oldPanelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("Rp", "").replace(" ", "").replace(",", ""));
-                dataPanelValues.set(oldIndex, String.format("Rp%,.2f", oldPanelAmount - oldAmount));
+                double oldPanelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("", "").replace(" ", "").replace(",", ""));
+                dataPanelValues.set(oldIndex, String.format("%,.2f", oldPanelAmount - oldAmount));
                 ((JPanel) dashboardPanel.getComponent(oldIndex)).repaint();
     
                 // Add to new type panel
-                double newPanelAmount = Double.parseDouble(dataPanelValues.get(newIndex).replace("Rp", "").replace(" ", "").replace(",", ""));
-                dataPanelValues.set(newIndex, String.format("Rp%,.2f", newPanelAmount + newAmount));
+                double newPanelAmount = Double.parseDouble(dataPanelValues.get(newIndex).replace("", "").replace(" ", "").replace(",", ""));
+                dataPanelValues.set(newIndex, String.format("%,.2f", newPanelAmount + newAmount));
                 ((JPanel) dashboardPanel.getComponent(newIndex)).repaint();
             } else {
                 // Update the same panel
-                double panelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("Rp", "").replace(" ", "").replace(",", ""));
-                dataPanelValues.set(oldIndex, String.format("Rp%,.2f", panelAmount - oldAmount + newAmount));
+                double panelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("", "").replace(" ", "").replace(",", ""));
+                dataPanelValues.set(oldIndex, String.format("%,.2f", panelAmount - oldAmount + newAmount));
                 ((JPanel) dashboardPanel.getComponent(oldIndex)).repaint();
             }
     
@@ -552,7 +552,7 @@ dashboardPanel.add(buttonsPanel);
             // Update the table model
             tableModel.setValueAt(newType, selectedRow, 1);
             tableModel.setValueAt(newDescription, selectedRow, 2);
-            tableModel.setValueAt(String.format("Rp%,.2f", newAmount), selectedRow, 3);
+            tableModel.setValueAt(String.format("%,.2f", newAmount), selectedRow, 3);
     
             System.out.println("Transaction updated successfully.");
         } catch (SQLException | NumberFormatException ex) {
@@ -571,7 +571,7 @@ dashboardPanel.add(buttonsPanel);
             String currentType = transactionTable.getValueAt(selectedRow, 1).toString();
             String currentDescription = transactionTable.getValueAt(selectedRow, 2).toString();
             String currentAmountStr = transactionTable.getValueAt(selectedRow, 3).toString();
-            double currentAmount = Double.parseDouble(currentAmountStr.replace("Rp", "").replace(" ", "").replace(",", ""));
+            double currentAmount = Double.parseDouble(currentAmountStr.replace("", "").replace(" ", "").replace(",", ""));
     
             // Create a new JDialog for editing the transaction
             JDialog dialog = new JDialog(frame, "Edit Transaction", true);
@@ -591,7 +591,7 @@ dashboardPanel.add(buttonsPanel);
             JTextField descriptionField = new JTextField(currentDescription);
     
             JLabel amountLabel = new JLabel("Amount:");
-            JTextField amountField = new JTextField(String.format("Rp%,.2f", currentAmount));
+            JTextField amountField = new JTextField(String.format("%,.2f", currentAmount));
     
             JButton updateButton = new JButton("Update");
             updateButton.setBackground(new Color(39, 174, 96));
@@ -632,9 +632,9 @@ dashboardPanel.add(buttonsPanel);
     
             // Hitung ulang total, income, dan expense
             totalAmount = TransactionValuesCalculation.getTotalValue(TransactionDAO.getAllTransaction());
-            dataPanelValues.set(0, String.format("-Rp%,.2f", TransactionValuesCalculation.getTotalExpenses(TransactionDAO.getAllTransaction())));
-            dataPanelValues.set(1, String.format("Rp%,.2f", TransactionValuesCalculation.getTotalIncomes(TransactionDAO.getAllTransaction())));
-            dataPanelValues.set(2, "Rp" + totalAmount);
+            dataPanelValues.set(0, String.format("-%,.2f", TransactionValuesCalculation.getTotalExpenses(TransactionDAO.getAllTransaction())));
+            dataPanelValues.set(1, String.format("%,.2f", TransactionValuesCalculation.getTotalIncomes(TransactionDAO.getAllTransaction())));
+            dataPanelValues.set(2, "" + totalAmount);
     
             // Perbarui tampilan data panel
             for (int i = 0; i < 3; i++) {
@@ -685,7 +685,7 @@ dashboardPanel.add(buttonsPanel);
                     transaction.getId(),
                     transaction.getType(),
                     transaction.getDescription(),
-                    String.format("Rp%,.2f", transaction.getAmount())
+                    String.format("%,.2f", transaction.getAmount())
                 };
                 tableModel.addRow(rowData);
             }
