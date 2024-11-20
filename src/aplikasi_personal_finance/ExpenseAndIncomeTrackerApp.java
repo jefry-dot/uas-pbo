@@ -6,6 +6,9 @@ import javax.swing.plaf.basic.BasicScrollBarUI;
 
 import java.util.ArrayList;
 import java.awt.event.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 
 import javax.swing.table.DefaultTableCellRenderer;
@@ -250,14 +253,26 @@ filterComboBox.addActionListener((e) -> {
 });
 
 
+
+JButton exportCSVButton = new JButton("Export to CSV");
+exportCSVButton.setBackground(new Color(46, 204, 113)); // Warna hijau
+exportCSVButton.setForeground(Color.WHITE);
+exportCSVButton.setFocusPainted(false);
+exportCSVButton.setBorderPainted(false);
+exportCSVButton.setFont(new Font("Arial", Font.BOLD, 14));
+exportCSVButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+exportCSVButton.addActionListener((e) -> exportToCSV());
+
+
 // Panel untuk tombol
 buttonsPanel = new JPanel();
-buttonsPanel.setLayout(new GridLayout(3, 1, 10, 10)); // Tata letak grid dengan 3 baris
+buttonsPanel.setLayout(new GridLayout(2, 3, 10, 10)); // Tata letak grid dengan 3 baris
 buttonsPanel.add(addTransactionButton);
 buttonsPanel.add(editTransactionButton);
 buttonsPanel.add(removeTransactionButton);
 buttonsPanel.add(refreshButton);
 buttonsPanel.add(filterComboBox);
+buttonsPanel.add(exportCSVButton);
 
 // Tambahkan panel tombol ke dashboard
 dashboardPanel.add(buttonsPanel);
@@ -650,6 +665,35 @@ dashboardPanel.add(buttonsPanel);
     }
     
 
+private void exportToCSV() {
+    JFileChooser fileChooser = new JFileChooser();
+    fileChooser.setDialogTitle("Save CSV File");
+    fileChooser.setSelectedFile(new File("transactions.csv"));
+    int userSelection = fileChooser.showSaveDialog(frame);
+
+    if (userSelection == JFileChooser.APPROVE_OPTION) {
+        File fileToSave = fileChooser.getSelectedFile();
+        try (FileWriter writer = new FileWriter(fileToSave)) {
+            // Header
+            writer.append("ID,Type,Description,Amount\n");
+
+            // Data dari tabel
+            for (int i = 0; i < tableModel.getRowCount(); i++) {
+                for (int j = 0; j < tableModel.getColumnCount(); j++) {
+                    writer.append(tableModel.getValueAt(i, j).toString());
+                    if (j < tableModel.getColumnCount() - 1) {
+                        writer.append(",");
+                    }
+                }
+                writer.append("\n");
+            }
+
+            JOptionPane.showMessageDialog(frame, "Data exported to CSV successfully!");
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "Failed to export data.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+}
 
 
   
