@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.border.LineBorder;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 
+
 import java.util.ArrayList;
 import java.awt.event.*;
 import java.io.File;
@@ -15,6 +16,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -249,7 +251,7 @@ filterComboBox.setCursor(new Cursor(Cursor.HAND_CURSOR));
 // Tambahkan ActionListener untuk memproses perubahan filter
 filterComboBox.addActionListener((e) -> {
     String selectedFilter = (String) filterComboBox.getSelectedItem();
-    filterTableData(selectedFilter);
+    filterTableData(selectedFilter, ""); // pass an empty string as the second argument
 });
 
 
@@ -279,8 +281,9 @@ dashboardPanel.add(buttonsPanel);
 
         
         // Set up the transaction table
-        String[] columnNames = {"ID","Type","Description","Amount"};
-        tableModel = new DefaultTableModel(columnNames, 0){
+        String[] columnNames = {"ID", "Type", "Description", "Amount", "Date", "Category"};
+        tableModel = new DefaultTableModel(columnNames, 0)
+        {
             @Override
             public boolean isCellEditable(int row, int column){
                 // Make all cells non-editable
@@ -318,21 +321,25 @@ dashboardPanel.add(buttonsPanel);
     
     
     // Removes the selected transaction from the table and database
-    private void removeSelectedTransaction(){
-        
+    private void removeSelectedTransaction() {
         int selectedRow = transactionTable.getSelectedRow();
         
         // Check if a row is selected
-        if(selectedRow != -1){
+        if (selectedRow != -1) {
             // Obtain the transaction details from the selected row
             int transactionId = (int) transactionTable.getValueAt(selectedRow, 0);
             String type = transactionTable.getValueAt(selectedRow, 1).toString();
             String amountStr = transactionTable.getValueAt(selectedRow, 3).toString();
-            double amount = Double.parseDouble(amountStr.replace("", "").replace(" ", "").replace(",", ""));
+            
+            // Remove "Rp" and commas, then parse to double
+            double amount = Double.parseDouble(amountStr.replace("Rp", "").replace(",", "").trim());
             
             // Update totalAmount based on the type of transaction
-            if(type.equals("Income")){ totalAmount -= amount; }
-            else{ totalAmount += amount; }
+            if (type.equals("Income")) {
+                totalAmount -= amount;
+            } else {
+                totalAmount += amount;
+            }
             
             // Repaint the total panel to reflect the updated total amount
             JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
@@ -345,23 +352,25 @@ dashboardPanel.add(buttonsPanel);
             String currentValue = dataPanelValues.get(indexToUpdate);
             double currentAmount = Double.parseDouble(currentValue.replace("", "").replace(" ", "").replace(",", "").replace("--", "-"));
             double updatedAmount = currentAmount + (type.equals("Income") ? -amount : amount);
-            //dataPanelValues.set(indexToUpdate, String.format("$%,.2f",updatedAmount));
-            if(indexToUpdate == 1){ // income
+            // Update the value in the data panel
+            if (indexToUpdate == 1) { // income
                 dataPanelValues.set(indexToUpdate, String.format("%,.2f", updatedAmount));
+            } else { // expense
+                dataPanelValues.set(indexToUpdate, fixNegativeValueDisplay(updatedAmount));
             }
-            // expense
-            else{ dataPanelValues.set(indexToUpdate, fixNegativeValueDisplay(updatedAmount)); }
-
+    
             // Repaint the corresponding data panel
             JPanel dataPanel = (JPanel) dashboardPanel.getComponent(indexToUpdate);
             dataPanel.repaint();
             
             // Remove the selected row from the table model
             tableModel.removeRow(selectedRow);
+            
             // Remove the transaction from the database
-            removeTransactionFromDatabase(transactionId);  
-        } 
+            removeTransactionFromDatabase(transactionId);
+        }
     }
+    
     
     
     
@@ -386,199 +395,273 @@ dashboardPanel.add(buttonsPanel);
     
     
     // Displays the dialog for adding a new transaction
-    private void showAddTransactionDialog(){
-        
-        // Create a new JDialog for adding a transaction
+    private void showAddTransactionDialog() {
+        // Buat JDialog untuk menambahkan transaksi
         JDialog dialog = new JDialog(frame, "Add Transaction", true);
-        dialog.setSize(400,250);
+        dialog.setSize(400, 350);
         dialog.setLocationRelativeTo(frame);
-        
-        // Create a panel to hold the components in a grid layout
-        JPanel dialogPanel = new JPanel(new GridLayout(4, 0, 10, 10));
-        // Set an empty border with padding for the dialog panel
+    
+        // Panel untuk komponen input
+        JPanel dialogPanel = new JPanel(new GridLayout(6, 2, 10, 10));
         dialogPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         dialogPanel.setBackground(Color.LIGHT_GRAY);
-        
-        // Create and configure components for transaction input
+    
+        // Input untuk tipe transaksi
         JLabel typeLabel = new JLabel("Type:");
-        JComboBox<String> typeCombobox = new JComboBox<>(new String[]{"Expense","Income"});
+        JComboBox<String> typeCombobox = new JComboBox<>(new String[]{"Expense", "Income"});
         typeCombobox.setBackground(Color.WHITE);
-        typeCombobox.setBorder(BorderFactory.createLineBorder(Color.yellow));
-        
+        typeCombobox.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+    
+        // Input untuk deskripsi
         JLabel descriptionLabel = new JLabel("Description:");
         JTextField descriptionField = new JTextField();
-        descriptionField.setBorder(BorderFactory.createLineBorder(Color.yellow));
-        
+        descriptionField.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+    
+        // Input untuk jumlah
         JLabel amountLabel = new JLabel("Amount:");
         JTextField amountField = new JTextField();
-        amountField.setBorder(BorderFactory.createLineBorder(Color.yellow));
-        
-        // Create and configure the "Add" button
+        amountField.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+    
+        // Input untuk tanggal
+        JLabel dateLabel = new JLabel("Date (yyyy-MM-dd):");
+        JTextField dateField = new JTextField();
+        dateField.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+    
+        // Input untuk kategori
+        JLabel categoryLabel = new JLabel("Category:");
+        JTextField categoryField = new JTextField();
+        categoryField.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+    
+        // Tombol Add
         JButton addButton = new JButton("Add");
-        addButton.setBackground(new Color(41,128,185));
+        addButton.setBackground(new Color(41, 128, 185));
         addButton.setForeground(Color.WHITE);
         addButton.setFocusPainted(false);
         addButton.setBorderPainted(false);
         addButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         addButton.addActionListener((e) -> {
-            addTransaction(typeCombobox, descriptionField, amountField);
+            // Panggil metode addTransaction dengan semua input
+            addTransaction(typeCombobox, descriptionField, amountField, dateField, categoryField);
+            dialog.dispose(); // Tutup dialog setelah transaksi ditambahkan
         });
-        
-        // Add components to the dialog panel
+    
+        // Tambahkan komponen ke panel
         dialogPanel.add(typeLabel);
         dialogPanel.add(typeCombobox);
         dialogPanel.add(descriptionLabel);
         dialogPanel.add(descriptionField);
         dialogPanel.add(amountLabel);
         dialogPanel.add(amountField);
-        dialogPanel.add(new JLabel()); // Empty label for spacing
+        dialogPanel.add(dateLabel);
+        dialogPanel.add(dateField);
+        dialogPanel.add(categoryLabel);
+        dialogPanel.add(categoryField);
+        dialogPanel.add(new JLabel()); // Spacer
         dialogPanel.add(addButton);
-
-        DatabaseConnection.getConnection();
-        
+    
+        // Tambahkan panel ke dialog
         dialog.add(dialogPanel);
         dialog.setVisible(true);
-        
     }
+    
     
     
     // Add a new transaction to the database
-    private void addTransaction(JComboBox<String> typeCombobox, JTextField descriptionField, JTextField amountField){
-        
-        
-            // Retrieve transaction details from the input fields
-            String type = (String) typeCombobox.getSelectedItem();
-            String description = descriptionField.getText();
-            String amount = amountField.getText();
+   private void addTransaction(JComboBox<String> typeCombobox, JTextField descriptionField, JTextField amountField, JTextField dateField, JTextField categoryField) {
+    // Ambil data input dari pengguna
+    String type = (String) typeCombobox.getSelectedItem();
+    String description = descriptionField.getText();
+    String amount = amountField.getText();
+    String dateStr = dateField.getText();
+    String category = categoryField.getText();
 
-            // Parse the amount string to a double value
-            double newAmount = Double.parseDouble(amount.replace("", "").replace(" ", "").replace(",", ""));
-            
-            // Update the total amount based on the transaction type (Income or Expense)
-            // Income
-            if(type.equals("Income")){ totalAmount += newAmount; }
-            // Expense
-            else{ totalAmount -= newAmount; }
-            
-            // Update the displayed total amount on the dashboard panel
-            JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
-            totalPanel.repaint();
-            
-            // Determine the index of the data panel to update based on the transaction type
-            int indexToUpdate = type.equals("Income") ? 1 : 0;
-            
-            // Retrieve the current value of the data panel
-            String currentValue = dataPanelValues.get(indexToUpdate);
-            
-            // Parse the current amount string to a double value
-            double currentAmount = Double.parseDouble(currentValue.replace("", "").replace(" ", "").replace(",", ""));
-            
-            // Calculate the updated amount based on the transaction type
-            double updatedAmount = currentAmount + (type.equals("Income") ? newAmount : -newAmount);
-            
-            // Update the data panel with the new amount
-            if(indexToUpdate == 1){ // income
-                dataPanelValues.set(indexToUpdate, String.format("%,.2f", updatedAmount));
-            }
-            // expense
-            else{ dataPanelValues.set(indexToUpdate, fixNegativeValueDisplay(updatedAmount)); }
-            
-            // Update the displayed data panel on the dashboard panel
-            JPanel dataPanel = (JPanel) dashboardPanel.getComponent(indexToUpdate);
-            dataPanel.repaint();
-            
-            
-            try {    
-                    Connection connection = DatabaseConnection.getConnection();
-                    String insertQuery = "INSERT INTO `transaction_table`(`transaction_type`, `description`, `amount`) VALUES (?,?,?)";
-                    PreparedStatement ps = connection.prepareStatement(insertQuery);
-
-                    ps.setString(1, type);
-                    ps.setString(2, description);
-                    ps.setDouble(3, Double.parseDouble(amount));
-                    ps.executeUpdate();
-                    System.out.println("Data inserted successfully.");
-                    
-                    tableModel.setRowCount(0);
-                    populateTableTransactions();
-
-            } catch (SQLException ex) {
-                System.out.println("Error - Data not inserted.");
-            }
-
-        
-        
-        
+    // Validasi input tanggal
+    java.sql.Date sqlDate;
+    try {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setLenient(false); // Non-aktifkan leniency untuk validasi ketat
+        java.util.Date parsedDate = sdf.parse(dateStr);
+        sqlDate = new java.sql.Date(parsedDate.getTime());
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(frame, "Invalid date format. Please use yyyy-MM-dd.", "Error", JOptionPane.ERROR_MESSAGE);
+        return; // Keluar jika tanggal tidak valid
     }
 
-    private void updateTransaction(int transactionId, JComboBox<String> typeCombobox, JTextField descriptionField, JTextField amountField, int selectedRow, String oldType, double oldAmount) {
+    // Validasi dan parse nilai amount
+    double newAmount;
+    try {
+        newAmount = Double.parseDouble(amount.replace(",", "").trim());
+    } catch (NumberFormatException e) {
+        JOptionPane.showMessageDialog(frame, "Invalid amount. Please enter a numeric value.", "Error", JOptionPane.ERROR_MESSAGE);
+        return; // Keluar jika amount tidak valid
+    }
+
+    // Perbarui total amount berdasarkan tipe transaksi
+    if (type.equals("Income")) {
+        totalAmount += newAmount;
+    } else {
+        totalAmount -= newAmount;
+    }
+
+    // Perbarui data panel dengan jumlah yang diperbarui
+    int indexToUpdate = type.equals("Income") ? 1 : 0;
+    String currentValue = dataPanelValues.get(indexToUpdate);
+    double currentAmount = Double.parseDouble(currentValue.replace(",", "").trim());
+    double updatedAmount = currentAmount + (type.equals("Income") ? newAmount : -newAmount);
+
+    if (indexToUpdate == 1) { // Income
+        dataPanelValues.set(indexToUpdate, String.format("%,.2f", updatedAmount));
+    } else { // Expense
+        dataPanelValues.set(indexToUpdate, fixNegativeValueDisplay(updatedAmount));
+    }
+
+    // Perbarui tampilan panel
+    JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
+    totalPanel.repaint();
+    JPanel dataPanel = (JPanel) dashboardPanel.getComponent(indexToUpdate);
+    dataPanel.repaint();
+
+    // Simpan data ke database
+    try (Connection connection = DatabaseConnection.getConnection();
+    PreparedStatement ps = connection.prepareStatement(
+        "INSERT INTO transaction_table (transaction_type, description, amount, temp_date, date, category) VALUES (?, ?, ?, ?, ?, ?)"
+    )) {
+   ps.setString(1, type);
+   ps.setString(2, description);
+   ps.setDouble(3, newAmount);
+   ps.setDate(4, new java.sql.Date(System.currentTimeMillis())); // Isi temp_date dengan tanggal sekarang
+   ps.setDate(5, sqlDate); // Nilai date yang dimasukkan pengguna
+   ps.setString(6, category);
+
+   ps.executeUpdate();
+
+
+
+        JOptionPane.showMessageDialog(frame, "Transaction added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+        // Refresh tabel transaksi
+        tableModel.setRowCount(0); // Kosongkan tabel
+        populateTableTransactions(); // Muat ulang data
+    } catch (SQLException ex) {
+        Logger.getLogger(ExpenseAndIncomeTrackerApp.class.getName()).log(Level.SEVERE, null, ex);
+        JOptionPane.showMessageDialog(frame, "Failed to add transaction.", "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    refreshData();
+}
+
+    
+
+private void updateTransaction(int transactionId, JComboBox<String> typeCombobox, JTextField descriptionField, JTextField amountField, JTextField categoryField, int selectedRow, String oldType, double oldAmount) {
+    try {
+        // Retrieve new transaction data from the UI components
+        String newType = (String) typeCombobox.getSelectedItem();
+        String newDescription = descriptionField.getText();
+        java.sql.Date sqlDate = new java.sql.Date(System.currentTimeMillis());
+        String newCategory = categoryField.getText();
+        
+        // Input validation for amount
+        double newAmount = 0.0;
         try {
-            String newType = (String) typeCombobox.getSelectedItem();
-            String newDescription = descriptionField.getText();
-            double newAmount = Double.parseDouble(amountField.getText().replace("", "").replace(" ", "").replace(",", ""));
-            
-            // Update totalAmount based on the difference in transaction amounts
-            if (oldType.equals("Income")) {
-                totalAmount -= oldAmount;
-            } else {
-                totalAmount += oldAmount;
-            }
-    
-            if (newType.equals("Income")) {
-                totalAmount += newAmount;
-            } else {
-                totalAmount -= newAmount;
-            }
-    
-            JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
-            totalPanel.repaint();
-    
-            // Update the data panel amounts
-            int oldIndex = oldType.equals("Income") ? 1 : 0;
-            int newIndex = newType.equals("Income") ? 1 : 0;
-    
-            if (oldIndex != newIndex) {
-                // Deduct from old type panel
-                double oldPanelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("", "").replace(" ", "").replace(",", ""));
-                dataPanelValues.set(oldIndex, String.format("%,.2f", oldPanelAmount - oldAmount));
-                ((JPanel) dashboardPanel.getComponent(oldIndex)).repaint();
-    
-                // Add to new type panel
-                double newPanelAmount = Double.parseDouble(dataPanelValues.get(newIndex).replace("", "").replace(" ", "").replace(",", ""));
-                dataPanelValues.set(newIndex, String.format("%,.2f", newPanelAmount + newAmount));
-                ((JPanel) dashboardPanel.getComponent(newIndex)).repaint();
-            } else {
-                // Update the same panel
-                double panelAmount = Double.parseDouble(dataPanelValues.get(oldIndex).replace("", "").replace(" ", "").replace(",", ""));
-                dataPanelValues.set(oldIndex, String.format("%,.2f", panelAmount - oldAmount + newAmount));
-                ((JPanel) dashboardPanel.getComponent(oldIndex)).repaint();
-            }
-    
-            // Update the database
-            Connection connection = DatabaseConnection.getConnection();
-            String updateQuery = "UPDATE `transaction_table` SET `transaction_type` = ?, `description` = ?, `amount` = ? WHERE `id` = ?";
-            PreparedStatement ps = connection.prepareStatement(updateQuery);
-            ps.setString(1, newType);
-            ps.setString(2, newDescription);
-            ps.setDouble(3, newAmount);
-            ps.setInt(4, transactionId);
-            ps.executeUpdate();
-    
-            // Update the table model
-            tableModel.setValueAt(newType, selectedRow, 1);
-            tableModel.setValueAt(newDescription, selectedRow, 2);
-            tableModel.setValueAt(String.format("%,.2f", newAmount), selectedRow, 3);
-    
-            System.out.println("Transaction updated successfully.");
-        } catch (SQLException | NumberFormatException ex) {
-            Logger.getLogger(ExpenseAndIncomeTrackerApp.class.getName()).log(Level.SEVERE, null, ex);
+            newAmount = Double.parseDouble(amountField.getText().replaceAll("[^\\d.]", ""));
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(null, "Please enter a valid amount.");
+            return;
         }
+
+        // Update totalAmount based on the difference in transaction amounts
+        updateTotalAmount(oldType, newType, oldAmount, newAmount);
+
+        // Update data panel amounts
+        updateDataPanelAmounts(oldType, newType, oldAmount, newAmount);
+
+        // Update the database
+        updateDatabase(transactionId, newType, newDescription, newAmount, sqlDate, newCategory);
+
+        // Update the table model with the new values
+        tableModel.setValueAt(newType, selectedRow, 1);
+        tableModel.setValueAt(newDescription, selectedRow, 2);
+        tableModel.setValueAt(String.format("%,.2f", newAmount), selectedRow, 3);
+
+        System.out.println("Transaction updated successfully.");
+    } catch (SQLException ex) {
+        Logger.getLogger(ExpenseAndIncomeTrackerApp.class.getName()).log(Level.SEVERE, null, ex);
     }
+    refreshData();
+}
+
+// Helper method to update the total amount based on transaction type
+private void updateTotalAmount(String oldType, String newType, double oldAmount, double newAmount) {
+    // Update totalAmount based on the difference in transaction amounts
+    if (oldType.equals("Income")) {
+        totalAmount -= oldAmount;
+    } else {
+        totalAmount += oldAmount;
+    }
+
+    if (newType.equals("Income")) {
+        totalAmount += newAmount;
+    } else {
+        totalAmount -= newAmount;
+    }
+
+    // Repaint total panel to reflect updated totalAmount
+    JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
+    totalPanel.repaint();
+
+    refreshData();
+}
+
+// Helper method to update the data panel amounts
+private void updateDataPanelAmounts(String oldType, String newType, double oldAmount, double newAmount) {
+    int oldIndex = oldType.equals("Income") ? 1 : 0;
+    int newIndex = newType.equals("Income") ? 1 : 0;
+
+    if (oldIndex != newIndex) {
+        // Deduct from old type panel
+        updatePanelAmount(oldIndex, -oldAmount);
+
+        // Add to new type panel
+        updatePanelAmount(newIndex, newAmount);
+    } else {
+        // Update the same panel
+        updatePanelAmount(oldIndex, -oldAmount + newAmount);
+    }
+}
+
+// Helper method to update the amount in a panel
+private void updatePanelAmount(int index, double amount) {
+    double panelAmount = Double.parseDouble(dataPanelValues.get(index).replaceAll("[^\\d.]", ""));
+    dataPanelValues.set(index, String.format("%,.2f", panelAmount + amount));
+    ((JPanel) dashboardPanel.getComponent(index)).repaint();
+}
+
+// Helper method to update the database with new transaction data
+private void updateDatabase(int transactionId, String newType, String newDescription, double newAmount, 
+                            java.sql.Date newTempDate, String newCategory) throws SQLException {
+    // Establish connection to the database
+    try (Connection connection = DatabaseConnection.getConnection();
+         PreparedStatement ps = connection.prepareStatement(
+             "UPDATE `transaction_table` SET `transaction_type` = ?, `description` = ?, `amount` = ?, " +
+             "`temp_date` = ?, `category` = ? WHERE `id` = ?"
+         )) {
+        ps.setString(1, newType);
+        ps.setString(2, newDescription);
+        ps.setDouble(3, newAmount);
+        ps.setDate(4, newTempDate); // Tambahkan kolom temp_date
+        ps.setString(5, newCategory); // Tambahkan kolom category
+        ps.setInt(6, transactionId); // ID tetap di urutan terakhir
+        ps.executeUpdate();
+    }
+    refreshData();
+}
+
+
     
 
     private void showEditTransactionDialog() {
         int selectedRow = transactionTable.getSelectedRow();
-        
+    
         // Check if a row is selected
         if (selectedRow != -1) {
             // Retrieve the existing data for the selected transaction
@@ -586,28 +669,44 @@ dashboardPanel.add(buttonsPanel);
             String currentType = transactionTable.getValueAt(selectedRow, 1).toString();
             String currentDescription = transactionTable.getValueAt(selectedRow, 2).toString();
             String currentAmountStr = transactionTable.getValueAt(selectedRow, 3).toString();
-            double currentAmount = Double.parseDouble(currentAmountStr.replace("", "").replace(" ", "").replace(",", ""));
+            String currentDate = transactionTable.getValueAt(selectedRow, 4).toString(); // Ambil tanggal
+            String currentCategory = transactionTable.getValueAt(selectedRow, 5).toString(); // Ambil kategori
+            double currentAmount = Double.parseDouble(
+    currentAmountStr.replace("Rp", "").replace(",", "").trim()
+);
     
             // Create a new JDialog for editing the transaction
             JDialog dialog = new JDialog(frame, "Edit Transaction", true);
-            dialog.setSize(400, 300);
+            dialog.setSize(400, 400);
             dialog.setLocationRelativeTo(frame);
     
             // Create and configure dialog panel
-            JPanel dialogPanel = new JPanel(new GridLayout(4, 0, 10, 10));
+            JPanel dialogPanel = new JPanel(new GridLayout(6, 2, 10, 10));
             dialogPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
             dialogPanel.setBackground(Color.LIGHT_GRAY);
     
+            // Input untuk tipe transaksi
             JLabel typeLabel = new JLabel("Type:");
             JComboBox<String> typeCombobox = new JComboBox<>(new String[]{"Expense", "Income"});
             typeCombobox.setSelectedItem(currentType);
     
+            // Input untuk deskripsi
             JLabel descriptionLabel = new JLabel("Description:");
             JTextField descriptionField = new JTextField(currentDescription);
     
+            // Input untuk jumlah
             JLabel amountLabel = new JLabel("Amount:");
             JTextField amountField = new JTextField(String.format("%,.2f", currentAmount));
     
+            // Input untuk tanggal
+            JLabel dateLabel = new JLabel("Date (yyyy-MM-dd):");
+            JTextField dateField = new JTextField(currentDate);
+    
+            // Input untuk kategori
+            JLabel categoryLabel = new JLabel("Category:");
+            JTextField categoryField = new JTextField(currentCategory);
+    
+            // Tombol Update
             JButton updateButton = new JButton("Update");
             updateButton.setBackground(new Color(39, 174, 96));
             updateButton.setForeground(Color.WHITE);
@@ -615,25 +714,33 @@ dashboardPanel.add(buttonsPanel);
             updateButton.setBorderPainted(false);
             updateButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
             updateButton.addActionListener(e -> {
-                updateTransaction(transactionId, typeCombobox, descriptionField, amountField, selectedRow, currentType, currentAmount);
+                // Panggil metode updateTransaction
+                updateTransaction(transactionId, typeCombobox, descriptionField, amountField, categoryField, selectedRow, currentType, currentAmount);
                 dialog.dispose();
             });
     
+            // Tambahkan komponen ke panel dialog
             dialogPanel.add(typeLabel);
             dialogPanel.add(typeCombobox);
             dialogPanel.add(descriptionLabel);
             dialogPanel.add(descriptionField);
             dialogPanel.add(amountLabel);
             dialogPanel.add(amountField);
+            dialogPanel.add(dateLabel);
+            dialogPanel.add(dateField);
+            dialogPanel.add(categoryLabel);
+            dialogPanel.add(categoryField);
             dialogPanel.add(new JLabel()); // Spacer
             dialogPanel.add(updateButton);
     
+            // Tampilkan dialog
             dialog.add(dialogPanel);
             dialog.setVisible(true);
         } else {
             JOptionPane.showMessageDialog(frame, "Please select a transaction to edit.", "No Selection", JOptionPane.WARNING_MESSAGE);
         }
     }
+    
     
     
 
@@ -702,39 +809,64 @@ private void exportToCSV() {
 
     
     // Populate Table Transactions
-    private void populateTableTransactions(){
-        
-        for(Transaction transaction : TransactionDAO.getAllTransaction()){
-            Object[] rowData = { transaction.getId(), transaction.getType(),
-                                 transaction.getDescription(), transaction.getAmount() };
-            tableModel.addRow(rowData);
-            
-        }
-        
-    }
-
-
-
-    private void filterTableData(String filter) {
-        // Kosongkan tabel sebelum menambahkan data yang difilter
+    private void populateTableTransactions() {
+        // Kosongkan tabel sebelum menambahkan data baru
         tableModel.setRowCount(0);
     
         // Ambil semua transaksi dari DAO
-        List<Transaction> allTransactions = TransactionDAO.getAllTransaction();
+        for (Transaction transaction : TransactionDAO.getAllTransaction()) {
+            // Buat data baris untuk setiap transaksi
+            Object[] rowData = {
+                transaction.getId(),
+                transaction.getType(),
+                transaction.getDescription(),
+                String.format("Rp%,.2f", transaction.getAmount()), // Format amount ke Rupiah
+                transaction.getDate().toString(), // Konversi tanggal ke string
+                transaction.getCategory() // Ambil kategori
+            };
+            // Tambahkan data baris ke tabel
+            tableModel.addRow(rowData);
+        }
+    }
     
+
+
+
+    private void filterTableData(String filterType, String filterCategory) {
+        // Kosongkan tabel sebelum menambahkan data yang difilter
+        tableModel.setRowCount(0);
+        
+        // Ambil semua transaksi dari DAO
+        List<Transaction> allTransactions = TransactionDAO.getAllTransaction();
+        
         for (Transaction transaction : allTransactions) {
-            // Tambahkan transaksi ke tabel berdasarkan filter
-            if (filter.equals("ALL") || transaction.getType().equalsIgnoreCase(filter)) {
+            boolean matchesFilter = true;
+            
+            // Filter berdasarkan tipe transaksi (ALL, EXPENSE, INCOME)
+            if (!filterType.equals("ALL") && !transaction.getType().equalsIgnoreCase(filterType)) {
+                matchesFilter = false;
+            }
+    
+            // Filter berdasarkan kategori transaksi
+            if (!filterCategory.isEmpty() && !transaction.getCategory().equalsIgnoreCase(filterCategory)) {
+                matchesFilter = false;
+            }
+    
+            // Jika transaksi memenuhi semua filter, tambahkan ke tabel
+            if (matchesFilter) {
                 Object[] rowData = {
                     transaction.getId(),
                     transaction.getType(),
                     transaction.getDescription(),
-                    String.format("%,.2f", transaction.getAmount())
+                    String.format("%,.2f", transaction.getAmount()),
+                    transaction.getDate().toString(),
+                    transaction.getCategory()
                 };
                 tableModel.addRow(rowData);
             }
         }
     }
+    
     
     
     // Configures the appearance and behavior of the transaction table

@@ -4,25 +4,30 @@
  */
 package aplikasi_personal_finance;
 
+import java.sql.Date;
+
 /**
  *
  * @author pakpa
  */
 public class Transaction {
-
     private int id;
-    private String type;
+    private String type; // "Income" atau "Expense"
     private String description;
     private double amount;
+    private Date date; // Gunakan java.sql.Date untuk tanggal
+    private String category;
     
     
     public Transaction(){}
     
-    public Transaction(int id, String type, String description, double amount){
+    public Transaction(int id, String type, String description, double amount, Date date, String category) {
         this.id = id;
         this.type = type;
         this.description = description;
         this.amount = amount;
+        this.date = date;
+        this.category = category;
     }
 
     public int getId() {
@@ -56,5 +61,11 @@ public class Transaction {
     public void setAmount(double amount) {
         this.amount = amount;
     }
+
+    public Date getDate() { return date; }
+    public void setDate(Date date) { this.date = date; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
     
 }
